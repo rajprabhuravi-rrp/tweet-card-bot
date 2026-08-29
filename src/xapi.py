@@ -35,6 +35,11 @@ def _parse_created_at(raw: str) -> datetime:
 
 
 def _select_post(tweets: list[dict]) -> Post | None:
+    # GetXAPI (like the underlying X API) puts a user's pinned tweet first
+    # regardless of how old it is -- the rest of the list is genuinely
+    # reverse-chronological after that. So this can't just take the first
+    # qualifying entry; it must pick the newest by createdAt.
+    candidates = []
     for tweet in tweets:
         text = tweet.get("text", "")
         # ADAPT: GetXAPI's spec has no explicit "is retweet" field, so this
@@ -44,13 +49,17 @@ def _select_post(tweets: list[dict]) -> Post | None:
             continue
         if tweet.get("isReply") or tweet.get("inReplyToId"):
             continue
-        return Post(
-            id=tweet["id"],
-            text=text,
-            created_at=_parse_created_at(tweet["createdAt"]),
-            url=tweet["url"],
+        candidates.append(
+            Post(
+                id=tweet["id"],
+                text=text,
+                created_at=_parse_created_at(tweet["createdAt"]),
+                url=tweet["url"],
+            )
         )
-    return None
+    if not candidates:
+        return None
+    return max(candidates, key=lambda post: post.created_at)
 
 
 def _request(handle: str) -> dict:

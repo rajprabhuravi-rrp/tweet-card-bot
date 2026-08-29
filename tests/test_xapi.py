@@ -54,6 +54,17 @@ def test_select_post_returns_none_when_nothing_qualifies():
     assert _select_post(tweets) is None
 
 
+def test_select_post_picks_newest_by_created_at_not_list_order():
+    # X's API puts a pinned tweet first regardless of how old it is; the
+    # rest of the list is genuinely reverse-chronological after that.
+    tweets = [
+        _tweet(id="pinned-old", text="old pinned post", created="Thu Jul 16 18:54:49 +0000 2026"),
+        _tweet(id="newest", text="actually the latest", created="Fri Aug 28 11:37:48 +0000 2026"),
+        _tweet(id="older-still", text="older than newest", created="Tue Aug 25 14:54:50 +0000 2026"),
+    ]
+    assert _select_post(tweets).id == "newest"
+
+
 def test_select_post_empty_list_returns_none():
     assert _select_post([]) is None
 
