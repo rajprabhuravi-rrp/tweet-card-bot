@@ -33,12 +33,14 @@ class UserConfig:
     template: Path
     accent: str
     zone: Zone
+    text_color: str = "#1a1a1a"
     enabled: bool = True
 
 
 @dataclass(frozen=True)
 class Config:
     users: list[UserConfig]
+    users_per_run: int | None = None
 
     def enabled_users(self) -> list[UserConfig]:
         return [u for u in self.users if u.enabled]
@@ -82,9 +84,14 @@ def _validate_template(template: Path, handle: str) -> None:
             )
 
 
-def _validate_accent(accent: str, handle: str) -> None:
-    if not HEX_RE.match(accent):
-        raise ConfigError(f"user '{handle}': accent '{accent}' is not a #rrggbb hex string")
+def _validate_hex_color(value: str, field: str, handle: str) -> None:
+    if not HEX_RE.match(value):
+        raise ConfigError(f"user '{handle}': {field} '{value}' is not a #rrggbb hex string")
+
+
+def _validate_users_per_run(users_per_run) -> None:
+    if users_per_run is not None and (not isinstance(users_per_run, int) or users_per_run < 1):
+        raise ConfigError(f"schedule.users_per_run must be a positive integer, got {users_per_run!r}")
 
 
 def load_config(path: str | Path) -> Config:
@@ -92,6 +99,9 @@ def load_config(path: str | Path) -> Config:
     raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     defaults = raw.get("defaults", {}) or {}
     raw_users = raw.get("users", []) or []
+    schedule = raw.get("schedule", {}) or {}
+    users_per_run = schedule.get("users_per_run")
+    _validate_users_per_run(users_per_run)
 
     seen_handles: set[str] = set()
     users: list[UserConfig] = []
@@ -113,15 +123,25 @@ def load_config(path: str | Path) -> Config:
         if not accent:
             raise ConfigError(f"user '{handle}': no accent configured")
 
+        text_color = raw_user.get("text_color", defaults.get("text_color", "#1a1a1a"))
+
         zone = _merge_zone(raw_user, defaults, handle)
         enabled = raw_user.get("enabled", True)
 
         _validate_template(template, handle)
         _validate_zone(zone, handle)
-        _validate_accent(accent, handle)
+        _validate_hex_color(accent, "accent", handle)
+        _validate_hex_color(text_color, "text_color", handle)
 
         users.append(
-            UserConfig(handle=handle, template=template, accent=accent, zone=zone, enabled=enabled)
+            UserConfig(
+                handle=handle,
+                template=template,
+                accent=accent,
+                zone=zone,
+                text_color=text_color,
+                enabled=enabled,
+            )
         )
 
-    return Config(users=users)
+    return Config(users=users, users_per_run=users_per_run)

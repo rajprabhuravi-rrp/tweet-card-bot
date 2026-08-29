@@ -196,7 +196,16 @@ class Renderer:
         self.page = page
         self.page.goto(overlay_path.resolve().as_uri())
 
-    def render(self, template_uri: str, zone: Zone, part: TextPart, badge, accent: str, out_path) -> None:
+    def render(
+        self,
+        template_uri: str,
+        zone: Zone,
+        part: TextPart,
+        badge,
+        accent: str,
+        text_color: str,
+        out_path,
+    ) -> None:
         badge_i, badge_n = badge if badge else (None, None)
         zone_h = zone.h - BADGE_H if badge else zone.h
 
@@ -208,6 +217,7 @@ class Renderer:
                 const badgeEl = document.getElementById('badge');
 
                 card.style.setProperty('--accent', args.accent);
+                card.style.setProperty('--text-color', args.textColor);
                 card.style.backgroundImage = `url(${args.templateUri})`;
 
                 zone.style.left = args.zone.x + 'px';
@@ -231,6 +241,7 @@ class Renderer:
             }""",
             {
                 "accent": accent,
+                "textColor": text_color,
                 "templateUri": template_uri,
                 "zone": {"x": zone.x, "y": zone.y, "w": zone.w, "h": zone.h},
                 "zoneH": zone_h,

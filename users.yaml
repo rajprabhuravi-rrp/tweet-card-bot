@@ -12,3 +12,9 @@ users:
     template: templates/testright.png
     accent: "#e88d5c"
     zone: { x: 70, y: 120, w: 610, h: 400 }    # photo on the RIGHT
+
+  - handle: Ahmedshabbir20
+    template: templates/shabbir.png
+    accent: "#ef9901"                          # sampled from the template's orange
+    text_color: "#f5f5f5"                      # dark template background needs light text
+    zone: { x: 50, y: 260, w: 750, h: 240 }    # below the quote-mark glyph (ends ~y237), above the divider (~y521), left of the photo

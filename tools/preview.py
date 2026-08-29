@@ -63,17 +63,21 @@ def main() -> int:
 
     with sync_playwright() as pw:
         browser = pw.chromium.launch()
-        page = browser.new_page(viewport={"width": 1200, "height": 675}, device_scale_factor=2)
+        # Separate pages: Measurer and Renderer each navigate their page to
+        # different HTML, so they can't share one without one clobbering
+        # the other's DOM (see src/pipeline.py for where this bites).
+        measure_page = browser.new_page(viewport={"width": 1200, "height": 675}, device_scale_factor=2)
+        render_page = browser.new_page(viewport={"width": 1200, "height": 675}, device_scale_factor=2)
 
-        plan = plan_parts(Measurer(page), text, user.zone, user.accent)
-        renderer = Renderer(page, OVERLAY_PATH)
+        plan = plan_parts(Measurer(measure_page), text, user.zone, user.accent)
+        renderer = Renderer(render_page, OVERLAY_PATH)
 
         n = len(plan.parts)
         paths = []
         for i, part in enumerate(plan.parts, start=1):
             badge = (i, n) if n > 1 else None
             out_path = OUT_DIR / f"{user.handle}_preview_{i}of{n}.png"
-            renderer.render(template_uri, user.zone, part, badge, user.accent, out_path)
+            renderer.render(template_uri, user.zone, part, badge, user.accent, user.text_color, out_path)
             paths.append(out_path)
 
         browser.close()

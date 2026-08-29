@@ -174,6 +174,111 @@ def test_bad_accent_rejected(tmp_path):
         load_config(users_yaml)
 
 
+def test_text_color_defaults_to_dark(tmp_path):
+    _make_png(tmp_path / "naval.png")
+    users_yaml = tmp_path / "users.yaml"
+    _write_yaml(
+        users_yaml,
+        {
+            "defaults": {"accent": "#5eaee0", "zone": {"x": 520, "y": 120, "w": 610, "h": 400}},
+            "users": [{"handle": "naval", "template": "naval.png"}],
+        },
+    )
+
+    config = load_config(users_yaml)
+
+    assert config.get("naval").text_color == "#1a1a1a"
+
+
+def test_text_color_overridable_for_dark_templates(tmp_path):
+    _make_png(tmp_path / "dark.png")
+    users_yaml = tmp_path / "users.yaml"
+    _write_yaml(
+        users_yaml,
+        {
+            "defaults": {"accent": "#5eaee0", "zone": {"x": 520, "y": 120, "w": 610, "h": 400}},
+            "users": [{"handle": "shabbir", "template": "dark.png", "text_color": "#ffffff"}],
+        },
+    )
+
+    config = load_config(users_yaml)
+
+    assert config.get("shabbir").text_color == "#ffffff"
+
+
+def test_text_color_rejects_bad_hex(tmp_path):
+    _make_png(tmp_path / "x.png")
+    users_yaml = tmp_path / "users.yaml"
+    _write_yaml(
+        users_yaml,
+        {
+            "defaults": {"accent": "#5eaee0", "zone": {"x": 520, "y": 120, "w": 610, "h": 400}},
+            "users": [{"handle": "badtext", "template": "x.png", "text_color": "white"}],
+        },
+    )
+
+    with pytest.raises(ConfigError, match="badtext"):
+        load_config(users_yaml)
+
+
+def test_schedule_users_per_run_parsed(tmp_path):
+    _make_png(tmp_path / "x.png")
+    users_yaml = tmp_path / "users.yaml"
+    _write_yaml(
+        users_yaml,
+        {
+            "schedule": {"users_per_run": 5},
+            "defaults": {
+                "accent": "#5eaee0",
+                "zone": {"x": 520, "y": 120, "w": 610, "h": 400},
+            },
+            "users": [{"handle": "a", "template": "x.png"}],
+        },
+    )
+
+    config = load_config(users_yaml)
+
+    assert config.users_per_run == 5
+
+
+def test_schedule_defaults_to_none_when_absent(tmp_path):
+    _make_png(tmp_path / "x.png")
+    users_yaml = tmp_path / "users.yaml"
+    _write_yaml(
+        users_yaml,
+        {
+            "defaults": {
+                "accent": "#5eaee0",
+                "zone": {"x": 520, "y": 120, "w": 610, "h": 400},
+            },
+            "users": [{"handle": "a", "template": "x.png"}],
+        },
+    )
+
+    config = load_config(users_yaml)
+
+    assert config.users_per_run is None
+
+
+def test_schedule_users_per_run_must_be_positive(tmp_path):
+    _make_png(tmp_path / "x.png")
+    users_yaml = tmp_path / "users.yaml"
+    _write_yaml(
+        users_yaml,
+        {
+            "schedule": {"users_per_run": 0},
+            "defaults": {
+                "accent": "#5eaee0",
+                "zone": {"x": 520, "y": 120, "w": 610, "h": 400},
+            },
+            "users": [{"handle": "a", "template": "x.png"}],
+        },
+    )
+
+    with pytest.raises(ConfigError, match="users_per_run"):
+        load_config(users_yaml)
+
+
 def test_enabled_defaults_true_and_can_be_disabled(tmp_path):
     _make_png(tmp_path / "x.png")
     users_yaml = tmp_path / "users.yaml"
