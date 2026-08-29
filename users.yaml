@@ -1,0 +1,14 @@
+defaults:
+  accent: "#5eaee0"
+  zone: { x: 520, y: 120, w: 610, h: 400 }
+
+users:
+  - handle: testleft
+    template: templates/testleft.png
+    accent: "#5eaee0"
+    zone: { x: 520, y: 120, w: 610, h: 400 }   # photo on the LEFT
+
+  - handle: testright
+    template: templates/testright.png
+    accent: "#e88d5c"
+    zone: { x: 70, y: 120, w: 610, h: 400 }    # photo on the RIGHT

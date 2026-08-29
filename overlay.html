@@ -1,0 +1,63 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; padding: 0; }
+  #card {
+    position: relative;
+    width: 1200px;
+    height: 675px;
+    background-size: cover;
+    background-position: center;
+    overflow: hidden;
+  }
+  #zone {
+    position: absolute;
+    display: flex;
+    align-items: center;
+  }
+  #text {
+    line-height: 1.36;
+    font-weight: 500;
+    letter-spacing: -.01em;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    color: #1a1a1a;
+    font-family: "Liberation Sans", "DejaVu Sans", "Noto Sans CJK SC",
+                 "Noto Color Emoji", sans-serif;
+  }
+  .ent { font-weight: 600; }
+  #badge {
+    position: absolute;
+    display: none;
+    align-items: center;
+    gap: 10px;
+    font-family: "Liberation Sans", "DejaVu Sans", sans-serif;
+  }
+  #badge .pill {
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: var(--accent, #5eaee0);
+    color: #fff;
+    font-weight: 700;
+    font-size: 15px;
+  }
+  #badge .label {
+    color: #666;
+    font-size: 15px;
+  }
+</style>
+</head>
+<body>
+  <div id="card">
+    <div id="zone">
+      <div id="text"></div>
+    </div>
+    <div id="badge">
+      <span class="pill" id="badge-pill"></span>
+      <span class="label" id="badge-label"></span>
+    </div>
+  </div>
+</body>
+</html>
