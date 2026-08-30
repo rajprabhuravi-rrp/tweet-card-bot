@@ -15,17 +15,19 @@ MIN_FONT = 19
 MAX_PARTS = 4
 BADGE_H = 46
 
-_ENTITY_RE = re.compile(r'https?://[^\s<>"]+|[@#]\w+')
+_MARKUP_RE = re.compile(r"\*\*(.+?)\*\*", re.DOTALL)
 
 
 def highlight_entities(text: str, accent: str) -> str:
-    """Escape text for HTML, then wrap @mentions/#hashtags/links in accent spans."""
+    """Escape text for HTML, wrapping **marked** spans (chosen by the LLM
+    highlight pipeline in src/highlight.py) in accent-colored spans.
+    Unbalanced/stray ** falls through and is escaped as literal text."""
     out = []
     last = 0
-    for m in _ENTITY_RE.finditer(text):
+    for m in _MARKUP_RE.finditer(text):
         out.append(html.escape(text[last : m.start()]))
-        escaped_entity = html.escape(m.group(0))
-        out.append(f'<span class="ent" style="color:{accent}">{escaped_entity}</span>')
+        escaped_span = html.escape(m.group(1))
+        out.append(f'<span class="ent" style="color:{accent}">{escaped_span}</span>')
         last = m.end()
     out.append(html.escape(text[last:]))
     return "".join(out)

@@ -69,7 +69,31 @@ def test_highlight_escapes_script_tag():
     assert "&lt;script&gt;" in out
 
 
-def test_highlight_wraps_mention_hashtag_and_link():
+def test_highlight_wraps_marked_span_and_strips_markers():
+    out = highlight_entities("plain **highlighted phrase** plain", "#5eaee0")
+    assert out == 'plain <span class="ent" style="color:#5eaee0">highlighted phrase</span> plain'
+
+
+def test_highlight_no_longer_auto_detects_mentions_hashtags_links():
+    # Highlighting is decided entirely by the LLM pipeline's ** markup now
+    # (src/highlight.py) -- plain entities are never auto-colored.
     out = highlight_entities("hi @naval check #stoicism at https://example.com/x?y=1&z=2", "#5eaee0")
-    assert out.count('<span class="ent"') == 3
-    assert "&amp;" in out  # the & inside the URL query is still escaped
+    assert '<span class="ent"' not in out
+    assert "&amp;" in out  # still escaped for HTML safety
+
+
+def test_highlight_escapes_html_inside_a_marked_span():
+    out = highlight_entities("**<script>alert(1)</script>**", "#5eaee0")
+    assert "<script>" not in out
+    assert '<span class="ent" style="color:#5eaee0">&lt;script&gt;alert(1)&lt;/script&gt;</span>' == out
+
+
+def test_highlight_unbalanced_marker_falls_through_as_literal_text():
+    out = highlight_entities("a stray ** marker with no pair", "#5eaee0")
+    assert '<span class="ent"' not in out
+    assert "**" in out
+
+
+def test_highlight_plain_text_with_no_markup_is_just_escaped():
+    out = highlight_entities("nothing special here", "#5eaee0")
+    assert out == "nothing special here"

@@ -73,6 +73,9 @@ def _setup_pipeline(tmp_path, monkeypatch, handles):
     monkeypatch.setattr("src.pipeline.STATE_PATH", tmp_path / "state.json")
     monkeypatch.setattr("src.pipeline.OUT_DIR", tmp_path / "out")
     monkeypatch.setattr("src.pipeline.sync_playwright", MagicMock())
+    # Identity passthrough by default -- tests that care about highlighting
+    # specifically override this.
+    monkeypatch.setattr("src.pipeline.annotate_highlights", lambda text: text)
 
 
 def test_run_isolates_one_user_failure(tmp_path, monkeypatch):
@@ -122,3 +125,35 @@ def test_run_writes_state_after_each_user_not_once_at_the_end(tmp_path, monkeypa
 
     assert "a" in seen_before_b["state"]["users"]
     assert "b" not in seen_before_b["state"]["users"]
+
+
+def test_run_renders_the_annotated_text_not_raw_post_text(tmp_path, monkeypatch):
+    _setup_pipeline(tmp_path, monkeypatch, ["a"])
+    monkeypatch.setattr("src.pipeline.annotate_highlights", lambda text: f"**{text}** marked")
+
+    with patch("src.pipeline.fetch_all", return_value={"a": _post("1")}), patch(
+        "src.pipeline.render_post", return_value=[tmp_path / "out.png"]
+    ) as mock_render, patch("src.pipeline.send_cards"):
+        run()
+
+    rendered_text = mock_render.call_args.args[3]
+    assert rendered_text == "**hello** marked"
+
+
+def test_run_falls_back_to_raw_text_when_highlighting_fails(tmp_path, monkeypatch):
+    _setup_pipeline(tmp_path, monkeypatch, ["a"])
+
+    def boom(text):
+        raise RuntimeError("both providers down")
+
+    monkeypatch.setattr("src.pipeline.annotate_highlights", boom)
+
+    with patch("src.pipeline.fetch_all", return_value={"a": _post("1")}), patch(
+        "src.pipeline.render_post", return_value=[tmp_path / "out.png"]
+    ) as mock_render, patch("src.pipeline.send_cards") as mock_send:
+        run()
+
+    # the post still goes out despite the highlighting failure
+    mock_send.assert_called_once()
+    rendered_text = mock_render.call_args.args[3]
+    assert rendered_text == "hello"

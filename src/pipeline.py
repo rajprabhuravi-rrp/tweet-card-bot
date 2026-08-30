@@ -17,6 +17,7 @@ load_dotenv(ROOT / ".env")
 
 from src.compose import Measurer, Renderer, plan_parts, template_data_uri
 from src.config import UserConfig, load_config
+from src.highlight import annotate_highlights
 from src.telegram import send_cards
 from src.xapi import Post, fetch_latest
 
@@ -68,15 +69,15 @@ def fetch_all(handles: list[str]) -> dict[str, Post | None | Exception]:
     return results
 
 
-def render_post(renderer: Renderer, measurer: Measurer, user: UserConfig, post: Post) -> list[Path]:
-    plan = plan_parts(measurer, post.text, user.zone, user.accent)
+def render_post(renderer: Renderer, measurer: Measurer, user: UserConfig, text: str, post_id: str) -> list[Path]:
+    plan = plan_parts(measurer, text, user.zone, user.accent)
     template_uri = template_data_uri(user.template)
     n = len(plan.parts)
     OUT_DIR.mkdir(exist_ok=True)
     paths = []
     for i, part in enumerate(plan.parts, start=1):
         badge = (i, n) if n > 1 else None
-        out_path = OUT_DIR / f"{user.handle}_{post.id}_{i}of{n}.png"
+        out_path = OUT_DIR / f"{user.handle}_{post_id}_{i}of{n}.png"
         renderer.render(template_uri, user.zone, part, badge, user.accent, user.text_color, out_path)
         paths.append(out_path)
     return paths
@@ -127,7 +128,13 @@ def run() -> int:
                 continue
 
             try:
-                paths = render_post(renderer, measurer, user, post)
+                marked_text = annotate_highlights(post.text)
+            except Exception as e:  # noqa: BLE001 - a highlighting outage must not block a real post
+                print(f"[{handle}] highlight annotation failed, using plain text: {e}")
+                marked_text = post.text
+
+            try:
+                paths = render_post(renderer, measurer, user, marked_text, post.id)
                 send_cards(user.handle, post.url, paths)
             except Exception as e:  # noqa: BLE001 - one user's failure must not stop the others
                 print(f"[{handle}] failed to render/send: {e}")
