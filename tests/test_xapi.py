@@ -8,7 +8,7 @@ import requests
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.xapi import Post, _parse_created_at, _select_post, fetch_latest
+from src.xapi import Post, _parse_created_at, _select_post, fetch_latest, fetch_recent
 
 
 def _tweet(
@@ -129,6 +129,56 @@ def test_retries_on_5xx_then_succeeds(monkeypatch):
 
     assert post is None
     assert mock_get.call_count == 2
+
+
+def test_fetch_recent_returns_newest_first_excluding_retweets_and_replies(monkeypatch):
+    monkeypatch.setenv("GETXAPI_KEY", "test-key")
+    tweets = [
+        _tweet(id="pinned-old", created="Thu Jul 16 18:54:49 +0000 2026"),
+        _tweet(id="rt", text="RT @a: x", created="Fri Aug 28 12:00:00 +0000 2026"),
+        _tweet(id="reply", is_reply=True, created="Fri Aug 28 11:50:00 +0000 2026"),
+        _tweet(id="newest", created="Fri Aug 28 11:37:48 +0000 2026"),
+        _tweet(id="second", created="Thu Aug 27 10:05:25 +0000 2026"),
+        _tweet(id="third", created="Thu Aug 27 08:05:27 +0000 2026"),
+        _tweet(id="fourth", created="Tue Aug 25 14:54:50 +0000 2026"),
+    ]
+    fake_resp = MagicMock()
+    fake_resp.status_code = 200
+    fake_resp.json.return_value = {"tweets": tweets}
+    fake_resp.raise_for_status = MagicMock()
+
+    with patch("src.xapi.requests.get", return_value=fake_resp):
+        posts = fetch_recent("naval", limit=3)
+
+    assert [p.id for p in posts] == ["newest", "second", "third"]
+
+
+def test_fetch_recent_returns_fewer_than_limit_if_not_enough_qualify(monkeypatch):
+    monkeypatch.setenv("GETXAPI_KEY", "test-key")
+    tweets = [_tweet(id="only-one")]
+    fake_resp = MagicMock()
+    fake_resp.status_code = 200
+    fake_resp.json.return_value = {"tweets": tweets}
+    fake_resp.raise_for_status = MagicMock()
+
+    with patch("src.xapi.requests.get", return_value=fake_resp):
+        posts = fetch_recent("naval", limit=5)
+
+    assert [p.id for p in posts] == ["only-one"]
+
+
+def test_fetch_recent_empty_when_nothing_qualifies(monkeypatch):
+    monkeypatch.setenv("GETXAPI_KEY", "test-key")
+    tweets = [_tweet(id="rt", text="RT @a: x")]
+    fake_resp = MagicMock()
+    fake_resp.status_code = 200
+    fake_resp.json.return_value = {"tweets": tweets}
+    fake_resp.raise_for_status = MagicMock()
+
+    with patch("src.xapi.requests.get", return_value=fake_resp):
+        posts = fetch_recent("naval", limit=5)
+
+    assert posts == []
 
 
 def test_never_retries_4xx(monkeypatch):

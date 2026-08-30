@@ -34,11 +34,11 @@ def _parse_created_at(raw: str) -> datetime:
     return datetime.strptime(raw, "%a %b %d %H:%M:%S %z %Y")
 
 
-def _select_post(tweets: list[dict]) -> Post | None:
-    # GetXAPI (like the underlying X API) puts a user's pinned tweet first
-    # regardless of how old it is -- the rest of the list is genuinely
-    # reverse-chronological after that. So this can't just take the first
-    # qualifying entry; it must pick the newest by createdAt.
+def _qualifying_posts(tweets: list[dict]) -> list[Post]:
+    """Newest-first list of non-retweet, non-reply posts. GetXAPI (like the
+    underlying X API) puts a user's pinned tweet first regardless of how old
+    it is -- the rest of the list is genuinely reverse-chronological after
+    that -- so this can't just take list order; it must sort by createdAt."""
     candidates = []
     for tweet in tweets:
         text = tweet.get("text", "")
@@ -57,9 +57,13 @@ def _select_post(tweets: list[dict]) -> Post | None:
                 url=tweet["url"],
             )
         )
-    if not candidates:
-        return None
-    return max(candidates, key=lambda post: post.created_at)
+    candidates.sort(key=lambda post: post.created_at, reverse=True)
+    return candidates
+
+
+def _select_post(tweets: list[dict]) -> Post | None:
+    candidates = _qualifying_posts(tweets)
+    return candidates[0] if candidates else None
 
 
 def _request(handle: str) -> dict:
@@ -93,3 +97,11 @@ def fetch_latest(handle: str) -> Post | None:
     """Most recent original, non-reply, non-retweet post for handle, or None."""
     data = _request(handle)
     return _select_post(data.get("tweets", []))
+
+
+def fetch_recent(handle: str, limit: int = 5) -> list[Post]:
+    """Up to `limit` most recent original, non-reply, non-retweet posts for
+    handle, newest first. May return fewer than `limit` if not enough
+    qualify in the single page GetXAPI returns."""
+    data = _request(handle)
+    return _qualifying_posts(data.get("tweets", []))[:limit]

@@ -135,7 +135,7 @@ def run() -> int:
 
             try:
                 paths = render_post(renderer, measurer, user, marked_text, post.id)
-                send_cards(user.handle, post.url, paths)
+                send_cards(user.handle, post.url, post.text, paths)
             except Exception as e:  # noqa: BLE001 - one user's failure must not stop the others
                 print(f"[{handle}] failed to render/send: {e}")
                 continue

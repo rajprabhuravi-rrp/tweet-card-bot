@@ -111,7 +111,7 @@ def test_run_writes_state_after_each_user_not_once_at_the_end(tmp_path, monkeypa
     state_path = tmp_path / "state.json"
     seen_before_b = {}
 
-    def fake_send_cards(handle, url, paths):
+    def fake_send_cards(handle, url, text, paths):
         if handle == "b":
             # if state.json is only written once at the end, "a" would not
             # be recorded yet at this point either -- proving the write

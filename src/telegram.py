@@ -4,6 +4,7 @@ another user's post could land between them and break the sequence.
 """
 from __future__ import annotations
 
+import html
 import json
 import os
 from pathlib import Path
@@ -11,6 +12,9 @@ from pathlib import Path
 import requests
 
 TIMEOUT = 25
+# Telegram caption limit is 1024 chars; keep well under it even after HTML
+# escaping can expand length (e.g. "&" -> "&amp;").
+MAX_CAPTION_TEXT_LEN = 800
 
 
 class TelegramError(Exception):
@@ -28,14 +32,19 @@ def _check(resp: requests.Response) -> dict:
     return body
 
 
-def _caption(handle: str, url: str) -> str:
-    return f'<b>@{handle}</b>\n<a href="{url}">Read the full post on X →</a>'
+def _caption(handle: str, url: str, text: str) -> str:
+    if len(text) > MAX_CAPTION_TEXT_LEN:
+        text = text[:MAX_CAPTION_TEXT_LEN].rstrip() + "…"
+    escaped_text = html.escape(text)
+    return f'<b>@{handle}</b>\n\n{escaped_text}\n\n<a href="{url}">Read the full post on X →</a>'
 
 
-def send_cards(handle: str, url: str, paths: list[Path]) -> None:
-    """Sends 1 card via sendPhoto, or 2-4 via sendMediaGroup (one album)."""
+def send_cards(handle: str, url: str, text: str, paths: list[Path]) -> None:
+    """Sends 1 card via sendPhoto, or 2-4 via sendMediaGroup (one album).
+    `text` is the actual original tweet text, included in the caption
+    alongside the image."""
     chat_id = os.environ["TELEGRAM_CHAT_ID"]
-    caption = _caption(handle, url)
+    caption = _caption(handle, url, text)
 
     if len(paths) == 1:
         _send_photo(chat_id, paths[0], caption)
